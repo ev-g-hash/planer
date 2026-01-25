@@ -2,7 +2,7 @@ meta:
   name: task-planner
   description: Планировщик задач с Telegram-ботом
   toolchain:
-    type: python
+    name: python      ← было type, стало name
     version: "3.12"
 
 build:
