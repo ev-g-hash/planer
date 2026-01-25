@@ -5,10 +5,10 @@ meta:
     name: python
     version: "3.12"
   environment:
-    - DJANGO_SECRET_KEY={{ env.DJANGO_SECRET_KEY }}
-    - DJANGO_DEBUG={{ env.DJANGO_DEBUG }}
-    - TELEGRAM_BOT_TOKEN={{ env.TELEGRAM_BOT_TOKEN }}
-    - TELEGRAM_CHAT_ID={{ env.TELEGRAM_CHAT_ID }}
+    - DJANGO_SECRET_KEY
+    - DJANGO_DEBUG
+    - TELEGRAM_BOT_TOKEN
+    - TELEGRAM_CHAT_ID
 
 build:
   dockerfile: Dockerfile
