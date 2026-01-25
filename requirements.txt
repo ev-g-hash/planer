@@ -9,3 +9,6 @@ asgiref==3.11.0
 
 # Планировщик задач
 APScheduler==3.11.2
+
+# WSGI-сервер
+gunicorn==23.0.0
