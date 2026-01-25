@@ -1,7 +1,9 @@
 meta:
   name: task-planner
   description: Планировщик задач с Telegram-ботом
-  version: "1.0.0"
+  toolchain:
+    type: python
+    version: "3.12"
 
 build:
   dockerfile: Dockerfile
@@ -9,4 +11,3 @@ build:
 run:
   ports:
     - "8080:8080"
-  command: /app/start.sh
