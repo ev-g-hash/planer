@@ -1,0 +1,29 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}Удаление задачи{% endblock %}
+
+{% block content %}
+<div class="container">
+    <header class="header">
+        <h1>Удаление задачи</h1>
+        <nav class="nav">
+            <a href="{% url 'task_list' %}">📋 Все задачи</a>
+            <a href="{% url 'landing' %}">🏠 На главную</a>
+        </nav>
+    </header>
+
+    <div class="card">
+        <h2>Удалить задачу?</h2>
+        <p>Вы уверены, что хотите удалить задачу <strong>{{ task.title }}</strong>?</p>
+        <p style="color: #dc3545; margin-top: 10px;">Это действие нельзя отменить!</p>
+        
+        <form method="post" style="margin-top: 30px;">
+            {% csrf_token %}
+            <div class="btn-group">
+                <button type="submit" class="btn btn-danger">Да, удалить</button>
+                <a href="{% url 'task_list' %}" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+# Django
+Django==6.0.1
+
+# Для работы бота
+aiogram==3.24.0
+python-dotenv==1.2.1
+requests==2.32.3
+asgiref==3.11.0
+
+# Планировщик задач
+APScheduler==3.10.4

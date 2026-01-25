@@ -1,0 +1,6 @@
+build:
+  dockerfile: Dockerfile
+run:
+  ports:
+    - "8080:8080"
+  command: /app/start.sh

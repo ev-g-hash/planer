@@ -1,0 +1,45 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}{{ action }} задачу{% endblock %}
+
+{% block content %}
+<div class="container">
+    <header class="header">
+        <h1>{{ action }} задачу</h1>
+        <nav class="nav">
+            <a href="{% url 'task_list' %}">📋 Все задачи</a>
+            <a href="{% url 'landing' %}">🏠 На главную</a>
+        </nav>
+    </header>
+
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="title">Название *</label>
+                <input type="text" id="title" name="title" required 
+                       value="{{ task.title|default:'' }}" 
+                       placeholder="Введите название задачи">
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Описание</label>
+                <textarea id="description" name="description" 
+                          placeholder="Подробное описание задачи">{{ task.description|default:'' }}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="due_date">Срок выполнения</label>
+                <input type="datetime-local" id="due_date" name="due_date" 
+                       value="{{ task.due_date|date:'Y-m-d\TH:i' }}">
+            </div>
+            
+            <div class="btn-group">
+                <button type="submit" class="btn">{{ action }}</button>
+                <a href="{% url 'task_list' %}" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

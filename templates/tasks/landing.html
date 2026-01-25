@@ -1,0 +1,23 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Планировщик задач</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div class="landing-container">
+        <div class="landing-content">
+            <div class="landing-icon">📋</div>
+            <h1 class="landing-title">Планировщик задач</h1>
+            <p class="landing-subtitle">
+                Организуйте свои задачи, управляйте сроками и повышайте продуктивность.<br>
+                Добро пожаловать в ваш личный органайзер!
+            </p>
+            <a href="{% url 'task_list' %}" class="landing-btn">🚀 Приступить к планированию</a>
+        </div>
+    </div>
+</body>
+</html>

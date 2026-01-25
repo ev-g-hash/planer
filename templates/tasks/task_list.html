@@ -1,0 +1,64 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}Все задачи{% endblock %}
+
+{% block content %}
+<div class="container">
+    <header class="header">
+        <h1>📋 Все задачи ({{ tasks.count }})</h1>
+        <nav class="nav">
+            <a href="{% url 'task_list' %}">📋 Все задачи</a>
+            <a href="{% url 'task_create' %}">➕ Новая задача</a>
+            <a href="{% url 'landing' %}">🏠 На главную</a>
+        </nav>
+    </header>
+
+    {% if tasks %}
+        {% regroup tasks by status as status_list %}
+        
+        {% for status in status_list %}
+        <div class="card">
+            <h2>
+                {% if status.grouper == 'new' %}🆕 Новые задачи
+                {% elif status.grouper == 'in_progress' %}⏳ В процессе
+                {% elif status.grouper == 'done' %}✅ Выполненные
+                {% elif status.grouper == 'overdue' %}⚠️ Просроченные
+                {% endif %}
+            </h2>
+            
+            {% for task in status.list %}
+            <div class="task-item">
+                <div class="task-content">
+                    <div class="task-title">{{ task.title }}</div>
+                    <div class="task-meta">
+                        <span class="badge badge-{{ task.status }}">{{ task.get_status_display }}</span>
+                        {% if task.due_date %}
+                        <span class="task-date">📅 {{ task.due_date|date:"d.m.Y H:i" }}</span>
+                        {% endif %}
+                    </div>
+                    {% if task.description %}
+                    <p class="task-description">{{ task.description }}</p>
+                    {% endif %}
+                </div>
+                <div class="task-actions">
+                    <a href="{% url 'task_toggle' task.id %}" class="btn btn-sm" title="Сменить статус">
+                        {% if task.status == 'done' %}↩️{% else %}✅{% endif %}
+                    </a>
+                    <a href="{% url 'task_update' task.id %}" class="btn btn-sm" title="Редактировать">✏️</a>
+                    <a href="{% url 'task_delete' task.id %}" class="btn btn-danger btn-sm" title="Удалить">🗑️</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card">
+            <div class="empty-message">
+                <div class="icon">📭</div>
+                <p>Задач пока нет</p>
+                <a href="{% url 'task_create' %}" class="btn">➕ Создать первую задачу</a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
