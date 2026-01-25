@@ -2,8 +2,13 @@ meta:
   name: task-planner
   description: Планировщик задач с Telegram-ботом
   toolchain:
-    name: python      ← было type, стало name
+    name: python
     version: "3.12"
+  environment:
+    - DJANGO_SECRET_KEY=your-secret-key
+    - DJANGO_DEBUG=False
+    - TELEGRAM_BOT_TOKEN=your-bot-token
+    - TELEGRAM_CHAT_ID=your-chat-id
 
 build:
   dockerfile: Dockerfile
