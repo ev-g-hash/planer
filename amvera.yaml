@@ -1,18 +1,19 @@
+version: null
 meta:
+  environment: python
   name: task-planner
   description: Планировщик задач с Telegram-ботом
   toolchain:
-    name: python
+    name: pip
     version: "3.12"
-  environment:
-    - DJANGO_SECRET_KEY
-    - DJANGO_DEBUG
-    - TELEGRAM_BOT_TOKEN
-    - TELEGRAM_CHAT_ID
-
 build:
-  dockerfile: Dockerfile
-
+  requirementsPath: requirements.txt
+  useCache: true
 run:
-  ports:
-    - "8080:8080"
+  command: |
+    python manage.py migrate --noinput &&
+    python manage.py collectstatic --noinput &&
+    gunicorn task_planner.wsgi:application --bind 0.0.0.0:8080 --workers 2 --timeout 30
+  persistenceMount: /data
+  containerPort: "8080"
+serviceType: compute
