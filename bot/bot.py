@@ -2,12 +2,7 @@ import os
 import sys
 import asyncio
 import logging
-from dotenv import load_dotenv
-from asgiref.sync import sync_to_async
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
-from django.utils import timezone
-from django.utils.timezone import localtime
+from pathlib import Path
 
 # Настройка логирования
 logging.basicConfig(
@@ -16,11 +11,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Загружаем переменные из .env файла
-load_dotenv()
+# Попытка загрузить dotenv, с fallback на системные переменные
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    logger.warning("dotenv не найден, используем системные переменные окружения")
 
 # Добавляем корень проекта в путь
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'task_planner.settings')
 
@@ -32,11 +32,21 @@ from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
+from asgiref.sync import sync_to_async
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from django.utils import timezone
+from django.utils.timezone import localtime
 
 from tasks.models import Task
 
 BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
-YOUR_CHAT_ID = int(os.environ.get('TELEGRAM_CHAT_ID', '0'))
+YOUR_CHAT_ID = int(os.environ.get('TELEGRAM_CHAT_ID', '0') or 0)
+
+# Проверка токена
+if not BOT_TOKEN:
+    logger.error("TELEGRAM_BOT_TOKEN не установлен! Бот не может запуститься.")
+    sys.exit(1)
 
 # Создание бота и диспетчера
 bot = Bot(token=BOT_TOKEN)
@@ -136,10 +146,10 @@ async def check_deadlines():
                 if YOUR_CHAT_ID:
                     try:
                         await bot.send_message(YOUR_CHAT_ID, text, parse_mode="Markdown")
-                        logger.info(f"Уведомление: {task.title}")
+                        logger.info(f"Уведомление отправлено: {task.title}")
                         await mark_task_overdue(task.id)
                     except Exception as e:
-                        logger.error(f"Ошибка: {e}")
+                        logger.error(f"Ошибка отправки уведомления: {e}")
                         
     except Exception as e:
         logger.error(f"Ошибка проверки дедлайнов: {e}")
@@ -230,7 +240,6 @@ async def show_all_tasks(message: types.Message):
         
         text += f"{i}. {status_icon} *{task.title}*{due_date_str}{desc_str}\n"
     
-    # Кнопка удаления внизу
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🗑️ Удалить задачу", callback_data="go_to_delete")]
     ])
@@ -263,7 +272,6 @@ async def go_to_delete(callback: types.CallbackQuery):
         
         text += f"{i}. {status_icon} *{task.title}*{due_date_str}\n"
     
-    # Кнопки с номерами - по 5 в ряд
     keyboard = []
     row = []
     for i, task in enumerate(tasks, 1):
@@ -296,7 +304,6 @@ async def delete_task_callback(callback: types.CallbackQuery):
     else:
         await callback.answer("Задача не найдена!")
     
-    # Возвращаемся к списку задач
     await show_all_tasks(callback.message)
 
 
@@ -321,7 +328,6 @@ async def delete_task_callback(callback: types.CallbackQuery):
     else:
         await callback.answer("Задача не найдена!")
     
-    # Обновляем список задач
     await show_all_tasks(callback.message)
 
 
@@ -413,7 +419,6 @@ async def process_due_date(message: types.Message, state: FSMContext):
     
     await state.update_data(due_date=due_date)
     
-    # Создаём задачу
     data = await state.get_data()
     
     task = await create_task(
@@ -493,27 +498,24 @@ async def cancel(message: types.Message, state: FSMContext):
     await state.clear()
 
 
-@dp.callback_query(F.data == "back_to_menu")
-async def back_to_menu(callback: types.CallbackQuery):
-    """Возврат в главное меню"""
-    await callback.message.edit_text("🔙 Возврат в меню...")
-    await cmd_start(callback.message)
-
-
 async def main():
     """Запуск бота"""
     try:
-        logger.info("🤖 Бот запущен...")
+        logger.info("🤖 Бот запускается...")
         
+        # Запускаем планировщик проверки дедлайнов
         scheduler.add_job(check_deadlines, IntervalTrigger(seconds=60), id='check_deadlines')
         scheduler.start()
+        logger.info("📅 Планировщик дедлайнов запущен")
         
+        # Удаляем вебхук и запускаем поллинг
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
+        logger.error(f"Критическая ошибка бота: {e}")
     finally:
         await bot.session.close()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
