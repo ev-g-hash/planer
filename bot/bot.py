@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+"""
+Telegram Bot для управления задачами.
+Запускается отдельно от Django, но использует его модели.
+"""
 import os
 import sys
 import asyncio
@@ -11,42 +16,76 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Попытка загрузить dotenv, с fallback на системные переменные
+# ========== НАСТРОЙКА ПУТЕЙ ==========
+# Определяем корень проекта
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+# Добавляем путь к site-packages если используется virtualenv
+VENV_PATH = os.environ.get('VIRTUAL_ENV', '')
+if VENV_PATH:
+    site_packages = Path(VENV_PATH) / 'lib' / f'python{sys.version_info.major}.{sys.version_info.minor}' / 'site-packages'
+    if site_packages.exists():
+        sys.path.insert(0, str(site_packages))
+
+# Проверяем, что Django доступен
+try:
+    import django
+    DJANGO_AVAILABLE = True
+except ImportError as e:
+    DJANGO_AVAILABLE = False
+    logger.error(f"Django не найден: {e}")
+
+# Загружаем переменные окружения
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    env_file = PROJECT_ROOT / '.env'
+    if env_file.exists():
+        load_dotenv(env_file)
+        logger.info(".env файл загружен")
+    else:
+        logger.warning(".env файл не найден")
 except ImportError:
-    logger.warning("dotenv не найден, используем системные переменные окружения")
+    logger.warning("dotenv не установлен, используем системные переменные")
 
-# Добавляем корень проекта в путь
-project_root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(project_root))
-
+# ========== НАСТРОЙКА DJANGO ==========
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'task_planner.settings')
 
-import django
-django.setup()
+if DJANGO_AVAILABLE:
+    try:
+        django.setup()
+        logger.info("Django успешно инициализирован")
+    except Exception as e:
+        logger.error(f"Ошибка инициализации Django: {e}")
+        DJANGO_AVAILABLE = False
 
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import CommandStart
-from aiogram.utils.keyboard import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.fsm.context import FSMContext
-from asgiref.sync import sync_to_async
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
-from django.utils import timezone
-from django.utils.timezone import localtime
+# ========== ИМПОРТЫ AIOGRAM И APSCHEDULER ==========
+try:
+    from aiogram import Bot, Dispatcher, types, F
+    from aiogram.filters import CommandStart
+    from aiogram.utils.keyboard import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
+    from aiogram.fsm.state import State, StatesGroup
+    from aiogram.fsm.context import FSMContext
+    from asgiref.sync import sync_to_async
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    from apscheduler.triggers.interval import IntervalTrigger
+    from django.utils import timezone
+    from django.utils.timezone import localtime
+    AIOGRAM_AVAILABLE = True
+except ImportError as e:
+    logger.error(f"Ошибка импорта зависимостей: {e}")
+    AIOGRAM_AVAILABLE = False
+    sys.exit(1)
 
-from tasks.models import Task
-
+# ========== КОНФИГУРАЦИЯ БОТА ==========
 BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 YOUR_CHAT_ID = int(os.environ.get('TELEGRAM_CHAT_ID', '0') or 0)
 
-# Проверка токена
 if not BOT_TOKEN:
     logger.error("TELEGRAM_BOT_TOKEN не установлен! Бот не может запуститься.")
     sys.exit(1)
+
+logger.info(f"Чат ID для уведомлений: {YOUR_CHAT_ID}")
 
 # Создание бота и диспетчера
 bot = Bot(token=BOT_TOKEN)
@@ -55,73 +94,71 @@ dp = Dispatcher()
 # Планировщик задач
 scheduler = AsyncIOScheduler()
 
-# ========== FSM Состояния ==========
-class CreateTask(StatesGroup):
-    """Создание задачи"""
-    title = State()
-    description = State()
-    due_date = State()
+# ========== ПРОВЕРКА БАЗЫ ДАННЫХ ==========
+if DJANGO_AVAILABLE:
+    from tasks.models import Task
+    
+    @sync_to_async
+    def check_database():
+        """Проверка соединения с БД"""
+        try:
+            count = Task.objects.count()
+            logger.info(f"База данных доступна. Задач в БД: {count}")
+            return True
+        except Exception as e:
+            logger.error(f"Ошибка БД: {e}")
+            return False
+    
+    # ========== АСИНХРОННЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С БД ==========
+    @sync_to_async
+    def get_all_tasks():
+        return list(Task.objects.all()[:50])
+    
+    @sync_to_async
+    def get_task_by_id(task_id):
+        try:
+            return Task.objects.get(id=task_id)
+        except Task.DoesNotExist:
+            return None
+    
+    @sync_to_async
+    def delete_task_by_id(task_id):
+        try:
+            Task.objects.get(id=task_id).delete()
+            return True
+        except Task.DoesNotExist:
+            return False
+    
+    @sync_to_async
+    def create_task(title, description, due_date):
+        return Task.objects.create(
+            title=title,
+            description=description,
+            due_date=due_date,
+            status='new'
+        )
+    
+    @sync_to_async
+    def get_pending_tasks_with_deadline():
+        return list(Task.objects.filter(
+            due_date__isnull=False,
+            status__in=['new', 'in_progress']
+        ))
+    
+    @sync_to_async
+    def mark_task_overdue(task_id):
+        try:
+            task = Task.objects.get(id=task_id)
+            task.status = 'overdue'
+            task.save()
+            return True
+        except Task.DoesNotExist:
+            return False
+else:
+    logger.error("Django недоступен! Бот не может работать с базой данных.")
+    sys.exit(1)
 
-
-# ========== Асинхронные функции для работы с БД ==========
-@sync_to_async
-def get_all_tasks():
-    """Получить все задачи"""
-    return list(Task.objects.all()[:50])
-
-
-@sync_to_async
-def get_task_by_id(task_id):
-    """Получить задачу по ID"""
-    try:
-        return Task.objects.get(id=task_id)
-    except Task.DoesNotExist:
-        return None
-
-
-@sync_to_async
-def delete_task_by_id(task_id):
-    """Удалить задачу по ID"""
-    try:
-        Task.objects.get(id=task_id).delete()
-        return True
-    except Task.DoesNotExist:
-        return False
-
-
-@sync_to_async
-def create_task(title, description, due_date):
-    """Создать задачу"""
-    return Task.objects.create(
-        title=title,
-        description=description,
-        due_date=due_date,
-        status='new'
-    )
-
-
-@sync_to_async
-def get_pending_tasks_with_deadline():
-    """Получить задачи со статусом new/in_progress"""
-    return list(Task.objects.filter(
-        due_date__isnull=False,
-        status__in=['new', 'in_progress']
-    ))
-
-
-@sync_to_async
-def mark_task_overdue(task_id):
-    """Пометить задачу как просроченную"""
-    try:
-        task = Task.objects.get(id=task_id)
-        task.status = 'overdue'
-        task.save()
-        return True
-    except Task.DoesNotExist:
-        return False
-
-
-# ========== Проверка дедлайнов ==========
+# ========== ПРОВЕРКА ДЕДЛАЙНОВ ==========
 async def check_deadlines():
     """Проверка дедлайнов"""
     try:
@@ -149,15 +186,14 @@ async def check_deadlines():
                         logger.info(f"Уведомление отправлено: {task.title}")
                         await mark_task_overdue(task.id)
                     except Exception as e:
-                        logger.error(f"Ошибка отправки уведомления: {e}")
+                        logger.error(f"Ошибка отправки: {e}")
                         
     except Exception as e:
         logger.error(f"Ошибка проверки дедлайнов: {e}")
 
 
-# ========== Клавиатуры ==========
+# ========== КЛАВИАТУРЫ ==========
 def get_main_keyboard():
-    """Главное меню"""
     keyboard = [
         [{"text": "📋 Все задачи"}],
         [{"text": "➕ Новая задача"}],
@@ -167,40 +203,25 @@ def get_main_keyboard():
 
 
 def get_cancel_keyboard():
-    """Клавиатура отмены"""
     keyboard = [[{"text": "❌ Отмена"}]]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def get_skip_keyboard():
-    """Клавиатура пропуска"""
     keyboard = [[{"text": "⏩ Пропустить"}]]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
-def get_tasks_keyboard(tasks):
-    """Inline клавиатура со списком задач для удаления"""
-    keyboard = []
-    for task in tasks[:10]:  # Максимум 10 кнопок
-        keyboard.append([
-            InlineKeyboardButton(
-                text=f"❌ {task.title[:30]}",
-                callback_data=f"delete_task_{task.id}"
-            )
-        ])
-    
-    if keyboard:
-        keyboard.append([
-            InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_menu")
-        ])
-    
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+# ========== FSM СОСТОЯНИЯ ==========
+class CreateTask(StatesGroup):
+    title = State()
+    description = State()
+    due_date = State()
 
 
-# ========== Обработчики ==========
+# ========== ОБРАБОТЧИКИ ==========
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message):
-    """Команда /start"""
     welcome_text = (
         "👋 Привет! Я бот для управления задачами.\n\n"
         "📋 Функции:\n"
@@ -214,7 +235,6 @@ async def cmd_start(message: types.Message):
 
 @dp.message(F.text == "📋 Все задачи")
 async def show_all_tasks(message: types.Message):
-    """Показать все задачи"""
     tasks = await get_all_tasks()
     
     if not tasks:
@@ -249,7 +269,6 @@ async def show_all_tasks(message: types.Message):
 
 @dp.callback_query(F.data == "go_to_delete")
 async def go_to_delete(callback: types.CallbackQuery):
-    """Переход к выбору задачи для удаления"""
     tasks = await get_all_tasks()
     
     if not tasks:
@@ -275,10 +294,7 @@ async def go_to_delete(callback: types.CallbackQuery):
     keyboard = []
     row = []
     for i, task in enumerate(tasks, 1):
-        row.append(InlineKeyboardButton(
-            text=str(i),
-            callback_data=f"delete_{task.id}"
-        ))
+        row.append(InlineKeyboardButton(text=str(i), callback_data=f"delete_{task.id}"))
         if len(row) == 5:
             keyboard.append(row)
             row = []
@@ -292,7 +308,6 @@ async def go_to_delete(callback: types.CallbackQuery):
 
 @dp.callback_query(F.data.startswith("delete_"))
 async def delete_task_callback(callback: types.CallbackQuery):
-    """Удаление задачи"""
     task_id = int(callback.data.replace("delete_", ""))
     task = await get_task_by_id(task_id)
     
@@ -309,31 +324,12 @@ async def delete_task_callback(callback: types.CallbackQuery):
 
 @dp.callback_query(F.data == "back_to_menu")
 async def back_to_menu(callback: types.CallbackQuery):
-    """Возврат в главное меню"""
     await callback.message.edit_text("🔙 Возврат в меню...")
     await cmd_start(callback.message)
 
 
-@dp.callback_query(F.data.startswith("delete_task_"))
-async def delete_task_callback(callback: types.CallbackQuery):
-    """Удаление задачи по кнопке"""
-    task_id = int(callback.data.replace("delete_task_", ""))
-    task = await get_task_by_id(task_id)
-    
-    if task:
-        await delete_task_by_id(task_id)
-        await callback.answer(f"Задача '{task.title}' удалена!")
-        await callback.message.edit_text(f"✅ Задача '{task.title}' удалена!")
-        logger.info(f"Пользователь {callback.from_user.id} удалил задачу: {task.title}")
-    else:
-        await callback.answer("Задача не найдена!")
-    
-    await show_all_tasks(callback.message)
-
-
 @dp.message(F.text == "➕ Новая задача")
 async def create_task_start(message: types.Message, state: FSMContext):
-    """Начало создания задачи"""
     await message.answer(
         "➕ **Новая задача**\n\n"
         "📝 Введите название задачи:",
@@ -345,7 +341,6 @@ async def create_task_start(message: types.Message, state: FSMContext):
 
 @dp.message(CreateTask.title)
 async def process_title(message: types.Message, state: FSMContext):
-    """Обработка названия"""
     text = message.text
     
     if text == "❌ Отмена":
@@ -366,7 +361,6 @@ async def process_title(message: types.Message, state: FSMContext):
 
 @dp.message(CreateTask.description)
 async def process_description(message: types.Message, state: FSMContext):
-    """Обработка описания"""
     text = message.text
     
     if text == "❌ Отмена":
@@ -374,11 +368,7 @@ async def process_description(message: types.Message, state: FSMContext):
         await state.clear()
         return
     
-    if text == "⏩ Пропустить":
-        description = ""
-    else:
-        description = text
-    
+    description = "" if text == "⏩ Пропустить" else text
     await state.update_data(description=description)
     
     await message.answer(
@@ -394,7 +384,6 @@ async def process_description(message: types.Message, state: FSMContext):
 
 @dp.message(CreateTask.due_date)
 async def process_due_date(message: types.Message, state: FSMContext):
-    """Обработка срока и создание задачи"""
     text = message.text
     
     if text == "❌ Отмена":
@@ -410,15 +399,10 @@ async def process_due_date(message: types.Message, state: FSMContext):
                 timezone.datetime.strptime(text, "%d.%m.%Y %H:%M")
             )
         except ValueError:
-            await message.answer(
-                "❌ Неверный формат!\n\n"
-                "Формат: ДД.ММ.ГГГГ ЧЧ:ММ",
-                reply_markup=get_skip_keyboard()
-            )
+            await message.answer("❌ Неверный формат!\n\nФормат: ДД.ММ.ГГГГ ЧЧ:ММ", reply_markup=get_skip_keyboard())
             return
     
     await state.update_data(due_date=due_date)
-    
     data = await state.get_data()
     
     task = await create_task(
@@ -427,15 +411,9 @@ async def process_due_date(message: types.Message, state: FSMContext):
         due_date=data.get('due_date')
     )
     
-    due_date_str = ""
-    if task.due_date:
-        due_date_local = localtime(task.due_date)
-        due_date_str = f"\n📅 {due_date_local.strftime('%d.%m.%Y %H:%M')}"
+    due_date_str = f"\n📅 {localtime(task.due_date).strftime('%d.%m.%Y %H:%M')}" if task.due_date else ""
     
-    response = (
-        f"✅ **Задача создана!**\n\n"
-        f"📝 *{task.title}*{due_date_str}"
-    )
+    response = f"✅ **Задача создана!**\n\n📝 *{task.title}*{due_date_str}"
     
     await message.answer(response, parse_mode="Markdown", reply_markup=get_main_keyboard())
     await state.clear()
@@ -443,47 +421,30 @@ async def process_due_date(message: types.Message, state: FSMContext):
 
 @dp.message(F.text == "⏰ Напоминания")
 async def show_reminders(message: types.Message):
-    """Показать просроченные задачи"""
     tasks = await get_pending_tasks_with_deadline()
-    
     now = timezone.now()
-    overdue = []
-    upcoming = []
     
-    for task in tasks:
-        if task.due_date:
-            if now >= task.due_date:
-                overdue.append(task)
-            else:
-                time_left = task.due_date - now
-                if time_left.total_seconds() < 86400:
-                    upcoming.append(task)
+    overdue = [t for t in tasks if t.due_date and now >= t.due_date]
+    upcoming = [t for t in tasks if t.due_date and now < t.due_date and (t.due_date - now).total_seconds() < 86400]
     
     text = "⏰ **Напоминания:**\n\n"
     
     if overdue:
         text += "⚠️ **Просроченные:**\n"
         for task in overdue:
-            desc = task.description[:30] + "..." if task.description and len(task.description) > 30 else (task.description or "")
-            due_date_local = localtime(task.due_date)
-            text += f"📝 *{task.title}*\n"
-            text += f"   📅 {due_date_local.strftime('%d.%m %H:%M')}\n"
+            desc = (task.description[:30] + "...") if task.description and len(task.description) > 30 else (task.description or "")
+            text += f"📝 *{task.title}*\n   📅 {localtime(task.due_date).strftime('%d.%m %H:%M')}\n"
             if desc:
-                text += f"   📝 {desc}\n"
-            text += "\n"
+                text += f"   📝 {desc}\n\n"
     
     if upcoming:
         text += "⏳ **Скоро (до 24ч):**\n"
         for task in upcoming:
-            time_left = task.due_date - now
-            hours = int(time_left.total_seconds() // 3600)
-            desc = task.description[:30] + "..." if task.description and len(task.description) > 30 else (task.description or "")
-            due_date_local = localtime(task.due_date)
-            text += f"📝 *{task.title}* - {hours}ч\n"
-            text += f"   📅 {due_date_local.strftime('%d.%m %H:%M')}\n"
+            hours = int((task.due_date - now).total_seconds() // 3600)
+            desc = (task.description[:30] + "...") if task.description and len(task.description) > 30 else (task.description or "")
+            text += f"📝 *{task.title}* - {hours}ч\n   📅 {localtime(task.due_date).strftime('%d.%m %H:%M')}\n"
             if desc:
-                text += f"   📝 {desc}\n"
-            text += "\n"
+                text += f"   📝 {desc}\n\n"
     
     if not overdue and not upcoming:
         text += "✅ Нет напоминаний!"
@@ -493,26 +454,31 @@ async def show_reminders(message: types.Message):
 
 @dp.message(F.text == "❌ Отмена")
 async def cancel(message: types.Message, state: FSMContext):
-    """Отмена"""
     await message.answer("❌ Отменено.", reply_markup=get_main_keyboard())
     await state.clear()
 
 
+# ========== ЗАПУСК ==========
 async def main():
     """Запуск бота"""
     try:
         logger.info("🤖 Бот запускается...")
         
-        # Запускаем планировщик проверки дедлайнов
+        # Проверяем БД
+        db_ok = await check_database()
+        if not db_ok:
+            logger.error("Не удалось подключиться к базе данных!")
+        
+        # Запускаем планировщик
         scheduler.add_job(check_deadlines, IntervalTrigger(seconds=60), id='check_deadlines')
         scheduler.start()
         logger.info("📅 Планировщик дедлайнов запущен")
         
-        # Удаляем вебхук и запускаем поллинг
+        # Запускаем поллинг
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
     except Exception as e:
-        logger.error(f"Критическая ошибка бота: {e}")
+        logger.error(f"Критическая ошибка: {e}")
     finally:
         await bot.session.close()
 
