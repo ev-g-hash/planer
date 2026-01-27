@@ -11,10 +11,35 @@ build:
   useCache: true
 run:
   command: |
-    python -c "import sys; print('Python:', sys.executable)" &&
-    python manage.py migrate --noinput &&
-    python manage.py collectstatic --noinput &&
-    gunicorn task_planner.wsgi:application --bind 0.0.0.0:8080 --workers 2 --timeout 30 & 
+    echo "=== ДИАГНОСТИКА ==="
+    echo "Python version:"
+    python --version
+    
+    echo ""
+    echo "Python path:"
+    python -c "import sys; print('\n'.join(sys.path))"
+    
+    echo ""
+    echo "Checking Django:"
+    python -c "import django; print('Django OK:', django.__version__)"
+    
+    echo ""
+    echo "Checking aiogram:"
+    python -c "from aiogram import Bot; print('Aiogram OK')"
+    
+    echo ""
+    echo "Checking dotenv:"
+    python -c "from dotenv import load_dotenv; print('dotenv OK')"
+    
+    echo ""
+    echo "Checking apscheduler:"
+    python -c "from apscheduler.schedulers.asyncio import AsyncIOScheduler; print('APScheduler OK')"
+    
+    echo ""
+    echo "=== ЗАПУСК ==="
+    python manage.py migrate --noinput
+    python manage.py collectstatic --noinput
+    gunicorn task_planner.wsgi:application --bind 0.0.0.0:8080 --workers 2 --timeout 30 &
     python bot/bot.py &
     wait
   persistenceMount: /data
