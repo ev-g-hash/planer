@@ -18,7 +18,6 @@ body {
     padding: 20px;
 }
 
-/* Header */
 .header {
     background: white;
     padding: 20px 30px;
@@ -47,14 +46,8 @@ body {
     color: #667eea;
     text-decoration: none;
     font-weight: 500;
-    transition: color 0.3s;
 }
 
-.nav a:hover {
-    color: #764ba2;
-}
-
-/* Cards */
 .card {
     background: white;
     border-radius: 10px;
@@ -70,7 +63,6 @@ body {
     border-bottom: 2px solid #f0f0f0;
 }
 
-/* Forms */
 .form-group {
     margin-bottom: 20px;
 }
@@ -79,18 +71,15 @@ body {
     display: block;
     margin-bottom: 8px;
     font-weight: 500;
-    color: #333;
 }
 
-.form-group input[type="text"],
-.form-group input[type="datetime-local"],
+.form-group input,
 .form-group textarea {
     width: 100%;
     padding: 12px 15px;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
     font-size: 1rem;
-    transition: border-color 0.3s;
 }
 
 .form-group input:focus,
@@ -99,12 +88,6 @@ body {
     border-color: #667eea;
 }
 
-.form-group textarea {
-    min-height: 120px;
-    resize: vertical;
-}
-
-/* Buttons */
 .btn {
     display: inline-block;
     padding: 12px 24px;
@@ -113,15 +96,8 @@ body {
     border: none;
     border-radius: 8px;
     font-size: 1rem;
-    font-weight: 500;
     cursor: pointer;
     text-decoration: none;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .btn-secondary {
@@ -132,18 +108,12 @@ body {
     background: #dc3545;
 }
 
-.btn-sm {
-    padding: 8px 12px;
-    font-size: 0.9rem;
-}
-
 .btn-group {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
 }
 
-/* Task items */
 .task-item {
     display: flex;
     justify-content: space-between;
@@ -152,11 +122,6 @@ body {
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     margin-bottom: 15px;
-    transition: border-color 0.3s;
-}
-
-.task-item:hover {
-    border-color: #667eea;
 }
 
 .task-content {
@@ -167,7 +132,6 @@ body {
     font-weight: 600;
     font-size: 1.1rem;
     margin-bottom: 8px;
-    color: #333;
 }
 
 .task-meta {
@@ -182,52 +146,24 @@ body {
     font-size: 0.9rem;
 }
 
-.task-description {
-    margin-top: 10px;
-    color: #666;
-    font-size: 0.95rem;
-}
-
 .task-actions {
     display: flex;
     gap: 8px;
     margin-left: 15px;
 }
 
-.task-actions .btn {
-    text-decoration: none;
-}
-
-/* Badges */
 .badge {
     display: inline-block;
     padding: 4px 10px;
     border-radius: 20px;
     font-size: 0.8rem;
-    font-weight: 500;
 }
 
-.badge-new {
-    background: #e3f2fd;
-    color: #1976d2;
-}
+.badge-new { background: #e3f2fd; color: #1976d2; }
+.badge-in_progress { background: #fff3e0; color: #f57c00; }
+.badge-done { background: #e8f5e9; color: #388e3c; }
+.badge-overdue { background: #ffebee; color: #d32f2f; }
 
-.badge-in_progress {
-    background: #fff3e0;
-    color: #f57c00;
-}
-
-.badge-done {
-    background: #e8f5e9;
-    color: #388e3c;
-}
-
-.badge-overdue {
-    background: #ffebee;
-    color: #d32f2f;
-}
-
-/* Empty state */
 .empty-message {
     text-align: center;
     padding: 40px 20px;
@@ -239,21 +175,12 @@ body {
     margin-bottom: 20px;
 }
 
-.empty-message p {
-    font-size: 1.2rem;
-    margin-bottom: 20px;
-}
-
-/* Landing page */
 .landing-container {
     min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 20px;
-}
-
-.landing-content {
     text-align: center;
     color: white;
 }
@@ -266,7 +193,6 @@ body {
 .landing-title {
     font-size: 3rem;
     margin-bottom: 20px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
 }
 
 .landing-subtitle {
@@ -284,54 +210,22 @@ body {
     border-radius: 30px;
     font-size: 1.1rem;
     font-weight: 600;
-    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.landing-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-}
-
-/* Messages */
-.messages {
-    list-style: none;
-    margin-bottom: 20px;
-}
-
-.messages li {
-    padding: 12px 20px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-}
-
-.messages li.success {
-    background: #d4edda;
-    color: #155724;
-}
-
-.messages li.error {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-/* Responsive */
 @media (max-width: 600px) {
     .header {
         flex-direction: column;
         text-align: center;
     }
-    
     .task-item {
         flex-direction: column;
     }
-    
     .task-actions {
         margin-left: 0;
         margin-top: 15px;
         width: 100%;
         justify-content: flex-end;
     }
-    
     .landing-title {
         font-size: 2rem;
     }
