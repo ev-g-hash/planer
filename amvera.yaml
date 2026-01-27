@@ -9,32 +9,13 @@ meta:
 build:
   requirementsPath: requirements.txt
   useCache: true
-run:
-  command: |
-    echo "=== DIAGNOSTICS ==="
-    python3 --version
-    echo ""
-    echo "Python path:"
-    python3 -c "import sys, json; print(json.dumps(sys.path))"
-    echo ""
-    echo "Checking Django:"
-    python3 -c "import django; print('Django OK:', django.VERSION)"
-    echo ""
-    echo "Checking aiogram:"
-    python3 -c "from aiogram import Bot; print('Aiogram OK')"
-    echo ""
-    echo "Checking dotenv:"
-    python3 -c "from dotenv import load_dotenv; print('dotenv OK')"
-    echo ""
-    echo "Checking apscheduler:"
-    python3 -c "from apscheduler.schedulers.asyncio import AsyncIOScheduler; print('APScheduler OK')"
-    echo ""
-    echo "=== STARTING ==="
-    python3 manage.py migrate --noinput
-    python3 manage.py collectstatic --noinput
-    gunicorn task_planner.wsgi:application --bind 0.0.0.0:8080 --workers 2 --timeout 30
-    python3 bot/bot.py &
-    wait
+run: |
+  echo "=== STARTING ==="
+  python3 manage.py migrate --noinput
+  python3 manage.py collectstatic --noinput
+  gunicorn task_planner.wsgi:application --bind 0.0.0.0:8080 --workers 2 --timeout 30 &
+  python3 manage.py runbot &
+  wait
   persistenceMount: /data
   containerPort: "8080"
 serviceType: compute
