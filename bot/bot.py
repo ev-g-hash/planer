@@ -173,11 +173,11 @@ async def check_deadlines():
                 due_date_str = due_date_local.strftime('%d.%m.%Y %H:%M')
                 
                 text = (
-                    "⏰ **Дедлайн наступил!** ⏰\n\n"
+                    # "⏰ **Дедлайн наступил!** ⏰\n\n"
                     f"📝 **Задача:** {task.title}\n\n"
                     f"📝 **Описание:**\n{description}\n\n"
                     f"📅 **Срок:** {due_date_str}\n\n"
-                    "⚠️ Задача просрочена!"
+                    "⚠️ Задача наступила!"
                 )
                 
                 if YOUR_CHAT_ID:
@@ -198,6 +198,7 @@ def get_main_keyboard():
         [{"text": "📋 Все задачи"}],
         [{"text": "➕ Новая задача"}],
         [{"text": "⏰ Напоминания"}],
+        [{"https://planer-pihtulovevgeny.amvera.io/"}],
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
