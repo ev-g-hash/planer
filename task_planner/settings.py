@@ -99,4 +99,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Telegram Bot Token
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 
-CSRF_TRUSTED_ORIGINS = ['https://planer-pihtulovevgeny.amvera.io/']
+CSRF_TRUSTED_ORIGINS = [
+    'https://planer-pihtulovegeny.amvera.io',
+    'https://*.amvera.io',
+    'http://localhost:8000',
+] 
