@@ -268,6 +268,64 @@ async def show_all_tasks(message: types.Message):
     await message.answer(text, parse_mode="Markdown", reply_markup=keyboard)
 
 
+@dp.message(F.text == "🌐 Веб-интерфейс")
+async def show_web_interface(message: types.Message):
+    """Показать ссылку на веб-интерфейс"""
+    web_url = "https://planer-pihtulovevgeny.amvera.io/"
+    
+    text = (
+        f"🌐 **Веб-интерфейс планировщика задач**\n\n"
+        f"Перейдите по ссылке для работы через браузер:\n"
+        f"🔗 {web_url}\n\n"
+        f"💡 В веб-интерфейсе доступны все функции:"
+    )
+    
+    # Inline клавиатура для быстрого перехода
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 Открыть планировщик", url=web_url)],
+        [InlineKeyboardButton(text="📋 Создать задачу", callback_data="web_create_task")],
+        [InlineKeyboardButton(text="📊 Все задачи", callback_data="web_list_tasks")]
+    ])
+    
+    await message.answer(text, parse_mode="Markdown", reply_markup=keyboard)
+
+
+@dp.callback_query(F.data == "web_create_task")
+async def web_create_task_callback(callback: types.CallbackQuery):
+    """Переход к созданию задачи через веб"""
+    web_url = "https://planer-pihtulovevgeny.amvera.io/tasks/create/"
+    
+    text = (
+        "➕ **Создание задачи через веб-интерфейс**\n\n"
+        f"🔗 {web_url}"
+    )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 Создать задачу", url=web_url)],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_menu")]
+    ])
+    
+    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
+
+
+@dp.callback_query(F.data == "web_list_tasks")
+async def web_list_tasks_callback(callback: types.CallbackQuery):
+    """Переход к списку задач через веб"""
+    web_url = "https://planer-pihtulovevgeny.amvera.io/tasks/"
+    
+    text = (
+        "📋 **Все задачи через веб-интерфейс**\n\n"
+        f"🔗 {web_url}"
+    )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 Открыть список", url=web_url)],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_menu")]
+    ])
+    
+    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard)
+
+
 @dp.callback_query(F.data == "go_to_delete")
 async def go_to_delete(callback: types.CallbackQuery):
     tasks = await get_all_tasks()
