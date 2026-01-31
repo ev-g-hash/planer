@@ -198,7 +198,7 @@ def get_main_keyboard():
         [{"text": "📋 Все задачи"}],
         [{"text": "➕ Новая задача"}],
         [{"text": "⏰ Напоминания"}],
-        [{"https://planer-pihtulovevgeny.amvera.io/"}],
+        [{"text": "🌐 Веб-интерфейс"}],
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
